@@ -1,6 +1,8 @@
 export type CallStatus = 'waiting' | 'called' | 'in-treatment' | 'finished';
 export type TreatmentType = 'filling' | 'fluoride' | 'sealant' | 'checkup' | 'cleaning';
 export type UserRole = 'parent' | 'nurse' | 'doctor';
+export type StickerSource = 'game' | 'cooperation' | 'followup' | 'manual';
+export type StepAnimationType = 'xray' | 'rinse' | 'check' | 'fluoride' | 'sit' | 'bib' | 'mirror' | 'brush' | 'paint';
 
 export interface ChildInfo {
   name: string;
@@ -26,14 +28,23 @@ export interface CheckItem {
   duration: number;
 }
 
+export interface StepPrecautions {
+  parent: string[];
+  child: string;
+}
+
 export interface ChairStep {
   id: string;
   step: number;
   title: string;
   description: string;
+  childDescription: string;
   icon: string;
+  animationType: StepAnimationType;
   completed: boolean;
   active: boolean;
+  precautions: StepPrecautions;
+  estimatedDuration: number;
 }
 
 export interface RewardSticker {
@@ -42,7 +53,12 @@ export interface RewardSticker {
   icon: string;
   color: string;
   earned: boolean;
+  earnedAt?: string;
   condition: string;
+  source?: StickerSource;
+  encouragement?: string;
+  behaviorFeedback?: string;
+  autoEarnTrigger?: 'game_bubbles' | 'game_stars' | 'game_memory' | 'all_steps' | 'followup';
 }
 
 export interface DoctorInfo {
@@ -73,4 +89,7 @@ export interface GameState {
   bubblesPopped: number;
   starsCollected: number;
   currentGame: 'bubbles' | 'stars' | 'memory';
+  memoryCompleted: boolean;
+  bubblesThreshold: number;
+  starsThreshold: number;
 }

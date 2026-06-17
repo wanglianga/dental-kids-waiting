@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { gameState } from '../store';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
+import { gameState, checkGameStickerReward } from '../store';
 
 type GameMode = 'bubbles' | 'stars' | 'memory';
 const currentGame = ref<GameMode>('bubbles');
@@ -124,6 +124,7 @@ function moveBasket(e: MouseEvent | TouchEvent, rect: DOMRect) {
 
 function tryCatch() {
   catching.value = true;
+  tryCatchStar();
   setTimeout(() => (catching.value = false), 200);
 }
 
@@ -186,6 +187,47 @@ function flipCard(id: number) {
 
 const memoryWon = computed(() => memoryCards.value.length > 0 && memoryCards.value.every((c) => c.matched));
 
+const newStickerToast = ref<{ show: boolean; sticker: any }>({ show: false, sticker: null });
+
+watch(
+  () => gameState.bubblesPopped,
+  (newVal) => {
+    if (newVal >= gameState.bubblesThreshold && currentGame.value === 'bubbles') {
+      const sticker = checkGameStickerReward('bubbles');
+      if (sticker) showStickerToast(sticker);
+    }
+  }
+);
+
+watch(
+  () => gameState.starsCollected,
+  (newVal) => {
+    if (newVal >= gameState.starsThreshold && currentGame.value === 'stars') {
+      const sticker = checkGameStickerReward('stars');
+      if (sticker) showStickerToast(sticker);
+    }
+  }
+);
+
+watch(memoryWon, (won) => {
+  if (won) {
+    gameState.memoryCompleted = true;
+    const sticker = checkGameStickerReward('memory');
+    if (sticker) showStickerToast(sticker);
+  }
+});
+
+function showStickerToast(sticker: any) {
+  newStickerToast.value = { show: true, sticker };
+  setTimeout(() => {
+    newStickerToast.value.show = false;
+  }, 3000);
+}
+
+function tryCatchStar() {
+  gameState.starsCollected++;
+}
+
 function switchGame(g: GameMode) {
   stopBubbles();
   stopStars();
@@ -222,10 +264,12 @@ onUnmounted(() => {
       </div>
       <div class="score-chips">
         <span class="score-chip bubble-chip">
-          <span class="chip-icon">🫧</span> {{ gameState.bubblesPopped }}
+          <span class="chip-icon">🫧</span> {{ gameState.bubblesPopped }}/{{ gameState.bubblesThreshold }}
+          <span v-if="gameState.bubblesPopped >= gameState.bubblesThreshold" class="chip-badge">✓</span>
         </span>
         <span class="score-chip star-chip">
-          <span class="chip-icon">⭐</span> {{ gameState.starsCollected }}
+          <span class="chip-icon">⭐</span> {{ gameState.starsCollected }}/{{ gameState.starsThreshold }}
+          <span v-if="gameState.starsCollected >= gameState.starsThreshold" class="chip-badge">✓</span>
         </span>
       </div>
     </div>
@@ -326,6 +370,16 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <Transition name="toast">
+      <div v-if="newStickerToast.show" class="new-sticker-toast">
+        <div class="toast-icon">{{ newStickerToast.sticker?.icon }}</div>
+        <div class="toast-content">
+          <div class="toast-title">🎉 获得新贴纸！</div>
+          <div class="toast-name">{{ newStickerToast.sticker?.name }}</div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -383,6 +437,7 @@ onUnmounted(() => {
   border-radius: 20px;
   font-weight: 600;
   font-size: 13px;
+  position: relative;
 }
 
 .bubble-chip {
@@ -393,6 +448,30 @@ onUnmounted(() => {
 .star-chip {
   background: var(--c-accent-soft);
   color: #B8860B;
+}
+
+.chip-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  background: var(--c-success);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+  animation: pop-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes pop-in {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 
 .game-tabs {
@@ -680,5 +759,59 @@ onUnmounted(() => {
   .mem-question, .mem-emoji { font-size: 24px; }
   .tab-name { display: none; }
   .game-tab { padding: 10px; }
+}
+
+.new-sticker-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #FFC857 0%, #FF9F43 100%);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 32px rgba(255, 200, 87, 0.4);
+  z-index: 1000;
+}
+
+.toast-icon {
+  font-size: 40px;
+  animation: bounce-soft 0.6s ease-in-out infinite;
+}
+
+@keyframes bounce-soft {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.toast-content {
+  color: white;
+}
+
+.toast-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.toast-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.toast-enter-from {
+  opacity: 0;
+  transform: translateX(100px);
+}
+
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(100px);
 }
 </style>
