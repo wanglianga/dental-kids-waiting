@@ -1,7 +1,60 @@
 <script setup lang="ts">
-import { postCareItems, currentRole, treatmentMarks, toggleTreatment, needFollowUp, followUpDate } from '../store';
+import { postCareItems, currentRole, treatmentMarks, toggleTreatment, needFollowUp, followUpDate, toggleFollowUp, rewardStickers } from '../store';
 import type { TreatmentType } from '../types';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+
+const newStickerToast = ref<{ show: boolean; sticker: any }>({ show: false, sticker: null });
+let stickerToastShown = false;
+
+function handleFollowUpToggle(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const checked = target.checked;
+  const wasFollowUp = needFollowUp.value;
+
+  if (checked) {
+    const nowFollowUp = toggleFollowUp(followUpDate.value);
+    if (nowFollowUp && !wasFollowUp) {
+      checkAndShowFollowUpSticker();
+    }
+  } else {
+    toggleFollowUp();
+    stickerToastShown = false;
+  }
+}
+
+function handleDateChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  followUpDate.value = target.value;
+  if (needFollowUp.value && followUpDate.value && !stickerToastShown) {
+    checkAndShowFollowUpSticker();
+  }
+}
+
+function checkAndShowFollowUpSticker() {
+  const sticker = rewardStickers.find((s) => s.autoEarnTrigger === 'followup');
+  if (sticker && sticker.earned) {
+    showStickerToast(sticker);
+    stickerToastShown = true;
+  }
+}
+
+function showStickerToast(sticker: any) {
+  newStickerToast.value = { show: true, sticker };
+  setTimeout(() => {
+    newStickerToast.value.show = false;
+  }, 3000);
+}
+
+watch(needFollowUp, (newVal, oldVal) => {
+  if (newVal && !oldVal && !stickerToastShown) {
+    setTimeout(() => {
+      checkAndShowFollowUpSticker();
+    }, 100);
+  }
+  if (!newVal) {
+    stickerToastShown = false;
+  }
+});
 
 const typeConfig: Record<TreatmentType, { icon: string; color: string }> = {
   filling: { icon: '🦷', color: 'primary' },
@@ -58,18 +111,20 @@ const expandedId = ref<string | null>(null);
       <div class="followup-panel">
         <div class="followup-row">
           <label class="followup-label">
-            <input type="checkbox" v-model="needFollowUp" />
+            <input type="checkbox" :checked="needFollowUp" @change="handleFollowUpToggle" />
             <span>📅 设置复诊提醒</span>
           </label>
           <input
             v-if="needFollowUp"
             type="date"
-            v-model="followUpDate"
+            :value="followUpDate"
+            @change="handleDateChange"
             class="date-input"
           />
         </div>
         <div v-if="needFollowUp && followUpDate" class="followup-banner anim-pop-in">
           复诊日期：<strong>{{ followUpDate }}</strong>
+          <span class="reward-hint">🎁 已获得「守时小天使」贴纸奖励！</span>
         </div>
       </div>
     </div>
@@ -107,6 +162,16 @@ const expandedId = ref<string | null>(null);
         <div class="reminder-date">下次就诊：<strong>{{ followUpDate }}</strong></div>
       </div>
     </div>
+
+    <Transition name="toast">
+      <div v-if="newStickerToast.show" class="new-sticker-toast">
+        <div class="toast-icon">{{ newStickerToast.sticker?.icon }}</div>
+        <div class="toast-content">
+          <div class="toast-title">🎉 获得新贴纸！</div>
+          <div class="toast-name">{{ newStickerToast.sticker?.name }}</div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -284,10 +349,25 @@ const expandedId = ref<string | null>(null);
   font-size: 14px;
   color: var(--c-text);
   border: 1px solid var(--c-secondary-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .followup-banner strong {
   color: var(--c-secondary);
+}
+
+.reward-hint {
+  font-size: 12px;
+  font-weight: 600;
+  color: #B8860B;
+  background: var(--c-accent-soft);
+  padding: 4px 12px;
+  border-radius: 20px;
+  animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .care-list {
@@ -471,5 +551,65 @@ const expandedId = ref<string | null>(null);
   .postcare-section { padding: 18px 16px; }
   .marks-grid { grid-template-columns: repeat(2, 1fr); }
   .care-content { padding-left: 60px; padding-right: 12px; }
+}
+
+.new-sticker-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #FFC857 0%, #FF9F43 100%);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 32px rgba(255, 200, 87, 0.4);
+  z-index: 1000;
+}
+
+.toast-icon {
+  font-size: 40px;
+  animation: bounce-soft 0.6s ease-in-out infinite;
+}
+
+@keyframes bounce-soft {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.toast-content {
+  color: white;
+}
+
+.toast-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.toast-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.toast-enter-active,
+.toast-leave-active {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.toast-enter-from {
+  opacity: 0;
+  transform: translateX(100px);
+}
+
+.toast-leave-to {
+  opacity: 0;
+  transform: translateX(100px);
+}
+
+@keyframes pop-in {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 </style>

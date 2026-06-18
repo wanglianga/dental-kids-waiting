@@ -4,31 +4,25 @@ import { computed, ref } from 'vue';
 
 const activeIndex = computed(() => chairSteps.findIndex((s) => s.active));
 const expandedPrecautions = ref<string | null>(null);
-const transitioning = ref(false);
-const lastActiveIndex = ref(0);
+const contentKey = ref(0);
+const pendingNav = ref(false);
 
 function handleStepClick(id: string) {
   if (currentRole.value !== 'parent') {
     const newIdx = chairSteps.findIndex((s) => s.id === id);
     if (newIdx !== activeIndex.value) {
-      transitioning.value = true;
-      lastActiveIndex.value = activeIndex.value;
+      pendingNav.value = true;
+      contentKey.value++;
+      setActiveStep(id);
       setTimeout(() => {
-        setActiveStep(id);
-        setTimeout(() => {
-          transitioning.value = false;
-        }, 300);
-      }, 300);
+        pendingNav.value = false;
+      }, 150);
     }
   }
 }
 
 function togglePrecautions(id: string) {
   expandedPrecautions.value = expandedPrecautions.value === id ? null : id;
-}
-
-function getAnimationKey(stepId: string) {
-  return `${stepId}-${Date.now()}`;
 }
 </script>
 
@@ -80,11 +74,11 @@ function getAnimationKey(stepId: string) {
       </div>
     </div>
 
-    <div class="active-step-panel" :class="{ transitioning }">
+    <div class="active-step-panel" :class="{ 'nav-pending': pendingNav }">
       <div
         v-for="step in chairSteps"
         v-show="step.active"
-        :key="getAnimationKey(step.id)"
+        :key="`${step.id}-${contentKey}`"
         class="active-step-content"
         :class="`anim-${step.animationType}`"
       >
@@ -370,9 +364,10 @@ function getAnimationKey(stepId: string) {
   overflow: hidden;
 }
 
-.active-step-panel.transitioning .active-step-content {
-  opacity: 0;
-  transform: translateX(20px);
+.active-step-panel.nav-pending .active-step-content {
+  opacity: 0.6;
+  transform: scale(0.98);
+  filter: brightness(1.1);
 }
 
 .active-step-content {
@@ -381,11 +376,13 @@ function getAnimationKey(stepId: string) {
   border-radius: var(--radius-md);
   border: 2px solid var(--c-primary);
   padding: 20px;
-  animation: slideInRight 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: slideInRight 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: auto;
+  transition: opacity 0.15s ease, transform 0.15s ease, filter 0.15s ease;
 }
 
 @keyframes slideInRight {
-  0% { opacity: 0; transform: translateX(30px); }
+  0% { opacity: 0; transform: translateX(15px); }
   100% { opacity: 1; transform: translateX(0); }
 }
 

@@ -416,6 +416,25 @@ export function toggleTreatment(type: TreatmentType, note?: string) {
   }
 }
 
+export function toggleFollowUp(date?: string) {
+  needFollowUp.value = !needFollowUp.value;
+  if (needFollowUp.value && date) {
+    followUpDate.value = date;
+  }
+  if (needFollowUp.value) {
+    const followUpSticker = rewardStickers.find((s) => s.autoEarnTrigger === 'followup');
+    if (followUpSticker && !followUpSticker.earned) {
+      earnSticker(
+        followUpSticker.id,
+        'followup',
+        '太棒了！你按时来复诊，是爱护牙齿的好孩子！',
+        '家长和孩子非常重视口腔健康，能够按时复诊，值得表扬'
+      );
+    }
+  }
+  return needFollowUp.value;
+}
+
 export function confirmParent() {
   parentConfirmed.value = true;
 }
