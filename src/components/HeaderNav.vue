@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { currentRole, setRole, childInfo, getMyQueueStatus, toggleCallStatus } from '../store';
+import { currentRole, setRole, childInfo, getMyQueueStatus, toggleCallStatus, isChildMode, toggleChildMode } from '../store';
 import type { CallStatus, UserRole } from '../types';
 
 const roles: { value: UserRole; label: string; icon: string }[] = [
@@ -63,6 +63,15 @@ const statusInfo = computed(() => statusConfig[myStatus.value]);
         </div>
         <button v-if="currentRole === 'nurse'" class="call-btn anim-bounce-soft" @click="toggleCallStatus">
           🔔 切换叫号状态
+        </button>
+        <button
+          v-if="currentRole === 'parent'"
+          class="child-mode-btn"
+          :class="{ active: isChildMode }"
+          @click="toggleChildMode"
+        >
+          <span class="child-mode-icon">{{ isChildMode ? '👶' : '👨‍👩‍👧' }}</span>
+          <span class="child-mode-text">{{ isChildMode ? '儿童模式' : '家长模式' }}</span>
         </button>
       </div>
     </div>
@@ -251,6 +260,43 @@ const statusInfo = computed(() => statusConfig[myStatus.value]);
 .call-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(255, 200, 87, 0.45);
+}
+
+.child-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: white;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--c-text-soft);
+  box-shadow: var(--shadow-sm);
+  border: 2px solid var(--c-border);
+  transition: all 0.3s ease;
+}
+
+.child-mode-btn:hover {
+  background: var(--c-accent-soft);
+  color: #92661F;
+  border-color: var(--c-accent-soft);
+}
+
+.child-mode-btn.active {
+  background: linear-gradient(135deg, #FFC857 0%, #FFB347 100%);
+  color: #5D4037;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(255, 200, 87, 0.3);
+}
+
+.child-mode-icon {
+  font-size: 16px;
+}
+
+.child-mode-text {
+  font-size: 13px;
+  font-weight: 600;
 }
 
 @media (max-width: 1024px) {

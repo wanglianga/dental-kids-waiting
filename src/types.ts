@@ -93,3 +93,25 @@ export interface GameState {
   bubblesThreshold: number;
   starsThreshold: number;
 }
+
+export type LiveStatus = 'off' | 'preparing' | 'live' | 'in-treatment';
+
+export interface LiveRecord {
+  id: string;
+  queueNumber: string;
+  childName: string;
+  startTime: string;
+  endTime?: string;
+  duration?: number;
+  status: 'active' | 'ended';
+  roomId: string;
+}
+
+export interface ClinicRoom {
+  id: string;
+  name: string;
+  status: 'available' | 'preparing' | 'in-treatment';
+  currentQueueNumber?: string;
+  currentChildName?: string;
+  liveEnabled: boolean;
+}

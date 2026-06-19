@@ -1,4 +1,4 @@
-import { reactive, ref } from 'vue';
+import { reactive, ref, computed } from 'vue';
 import type {
   ChildInfo,
   QueueItem,
@@ -13,6 +13,9 @@ import type {
   UserRole,
   GameState,
   StickerSource,
+  LiveRecord,
+  ClinicRoom,
+  LiveStatus,
 } from './types';
 
 export const currentRole = ref<UserRole>('parent');
@@ -308,6 +311,174 @@ export const gameState = reactive<GameState>({
   bubblesThreshold: 30,
   starsThreshold: 15,
 });
+
+export const isChildMode = ref(false);
+
+export function toggleChildMode() {
+  isChildMode.value = !isChildMode.value;
+}
+
+export const clinicRooms = reactive<ClinicRoom[]>([
+  {
+    id: 'room-1',
+    name: '1号诊室',
+    status: 'preparing',
+    currentQueueNumber: 'A015',
+    currentChildName: '朵朵',
+    liveEnabled: true,
+  },
+  {
+    id: 'room-2',
+    name: '2号诊室',
+    status: 'available',
+    liveEnabled: false,
+  },
+  {
+    id: 'room-3',
+    name: '3号诊室',
+    status: 'in-treatment',
+    currentQueueNumber: 'A016',
+    currentChildName: '豆豆',
+    liveEnabled: false,
+  },
+]);
+
+export const liveRecords = reactive<LiveRecord[]>([
+  {
+    id: 'live-1',
+    queueNumber: 'A014',
+    childName: '天天',
+    startTime: '2024-06-19 09:15:00',
+    endTime: '2024-06-19 09:22:30',
+    duration: 450,
+    status: 'ended',
+    roomId: 'room-1',
+  },
+  {
+    id: 'live-2',
+    queueNumber: 'A015',
+    childName: '朵朵',
+    startTime: '2024-06-19 09:30:00',
+    status: 'active',
+    roomId: 'room-1',
+  },
+]);
+
+export const myLiveRoom = computed(() => {
+  return clinicRooms.find(
+    (r) => r.currentQueueNumber === childInfo.queueNumber
+  );
+});
+
+export const myLiveStatus = computed<LiveStatus>(() => {
+  const room = myLiveRoom.value;
+  if (!room) return 'off';
+  if (room.status === 'in-treatment') return 'in-treatment';
+  if (room.liveEnabled && room.status === 'preparing') return 'live';
+  return 'preparing';
+});
+
+export const myActiveLiveRecord = computed(() => {
+  return liveRecords.find(
+    (r) => r.queueNumber === childInfo.queueNumber && r.status === 'active'
+  );
+});
+
+export function startLiveView() {
+  const room = myLiveRoom.value;
+  if (!room || room.status === 'in-treatment') return null;
+
+  const existing = myActiveLiveRecord.value;
+  if (existing) return existing;
+
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const record: LiveRecord = {
+    id: `live-${Date.now()}`,
+    queueNumber: childInfo.queueNumber,
+    childName: childInfo.name,
+    startTime: now,
+    status: 'active',
+    roomId: room.id,
+  };
+  liveRecords.unshift(record);
+  room.liveEnabled = true;
+  return record;
+}
+
+export function stopLiveView() {
+  const record = myActiveLiveRecord.value;
+  if (!record) return;
+
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  record.endTime = now;
+  record.status = 'ended';
+  const start = new Date(record.startTime).getTime();
+  const end = new Date(now).getTime();
+  record.duration = Math.floor((end - start) / 1000);
+
+  const room = myLiveRoom.value;
+  if (room) {
+    room.liveEnabled = false;
+  }
+}
+
+export function startTreatment() {
+  const room = myLiveRoom.value;
+  if (!room) return;
+
+  room.status = 'in-treatment';
+  room.liveEnabled = false;
+
+  const activeRecord = liveRecords.find(
+    (r) => r.roomId === room.id && r.status === 'active'
+  );
+  if (activeRecord) {
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    activeRecord.endTime = now;
+    activeRecord.status = 'ended';
+    const start = new Date(activeRecord.startTime).getTime();
+    const end = new Date(now).getTime();
+    activeRecord.duration = Math.floor((end - start) / 1000);
+  }
+
+  updateCallStatus(room.currentQueueNumber!, 'in-treatment');
+}
+
+export function finishTreatment() {
+  const room = myLiveRoom.value;
+  if (!room) return;
+
+  room.status = 'available';
+  room.liveEnabled = false;
+  room.currentQueueNumber = undefined;
+  room.currentChildName = undefined;
+}
+
+export function assignPatientToRoom(roomId: string, queueNumber: string, childName: string) {
+  const room = clinicRooms.find((r) => r.id === roomId);
+  if (!room) return;
+
+  room.status = 'preparing';
+  room.currentQueueNumber = queueNumber;
+  room.currentChildName = childName;
+  room.liveEnabled = false;
+}
+
+export function getLiveStats() {
+  const total = liveRecords.length;
+  const active = liveRecords.filter((r) => r.status === 'active').length;
+  const totalDuration = liveRecords
+    .filter((r) => r.duration)
+    .reduce((sum, r) => sum + (r.duration || 0), 0);
+  const avgDuration = total > 0 ? Math.round(totalDuration / total) : 0;
+
+  return {
+    totalSessions: total,
+    activeSessions: active,
+    totalDurationSeconds: totalDuration,
+    averageDurationSeconds: avgDuration,
+  };
+}
 
 export function setRole(role: UserRole) {
   currentRole.value = role;

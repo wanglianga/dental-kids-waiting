@@ -8,7 +8,9 @@ import DoctorCard from './components/DoctorCard.vue';
 import MiniGame from './components/MiniGame.vue';
 import PostCareList from './components/PostCareList.vue';
 import ParentConfirm from './components/ParentConfirm.vue';
-import { currentRole } from './store';
+import ClinicLive from './components/ClinicLive.vue';
+import LiveStats from './components/LiveStats.vue';
+import { currentRole, isChildMode } from './store';
 </script>
 
 <template>
@@ -25,15 +27,17 @@ import { currentRole } from './store';
       <div class="layout-grid">
         <div class="left-col">
           <QueueProgress />
+          <ClinicLive v-if="currentRole === 'parent'" />
+          <LiveStats v-if="currentRole === 'nurse'" />
           <DoctorCard v-if="currentRole !== 'nurse'" />
-          <MiniGame />
+          <MiniGame v-if="currentRole !== 'nurse'" />
         </div>
 
         <div class="right-col">
-          <CheckItems />
-          <ChairSteps />
-          <RewardStickers />
-          <PostCareList />
+          <CheckItems v-if="currentRole !== 'nurse'" />
+          <ChairSteps v-if="currentRole !== 'nurse'" />
+          <RewardStickers v-if="currentRole !== 'nurse'" />
+          <PostCareList v-if="currentRole !== 'nurse'" />
           <ParentConfirm v-if="currentRole !== 'nurse'" />
         </div>
       </div>
@@ -44,7 +48,8 @@ import { currentRole } from './store';
         <span class="foot-logo">🦷 小牙医乐园</span>
         <span class="foot-text">让每一次看牙都充满勇气与微笑</span>
         <span class="foot-hint">
-          <template v-if="currentRole === 'parent'">📱 家长/儿童视图</template>
+          <template v-if="currentRole === 'parent' && isChildMode">👶 儿童模式（保护视力）</template>
+          <template v-else-if="currentRole === 'parent'">📱 家长/儿童视图</template>
           <template v-else-if="currentRole === 'nurse'">📣 护士叫号视图</template>
           <template v-else>🩺 医生操作视图</template>
         </span>

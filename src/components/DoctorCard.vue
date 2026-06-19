@@ -1,9 +1,21 @@
 <script setup lang="ts">
-import { doctors, currentRole } from '../store';
-import { ref } from 'vue';
+import { doctors, currentRole, myLiveStatus, startTreatment, finishTreatment } from '../store';
+import { ref, computed } from 'vue';
 
 const doctor = doctors[0];
 const showSpeak = ref(true);
+
+const isTreating = computed(() => {
+  return myLiveStatus.value === 'in-treatment';
+});
+
+function handleStartTreatment() {
+  startTreatment();
+}
+
+function handleFinishTreatment() {
+  finishTreatment();
+}
 </script>
 
 <template>
@@ -54,6 +66,43 @@ const showSpeak = ref(true);
     <div v-if="currentRole === 'doctor'" class="doctor-panel">
       <div class="panel-title">👨‍⚕️ 医生快速操作</div>
       <div class="panel-tips">点击下方标记已完成的治疗项目</div>
+
+      <div class="treatment-control">
+        <div class="control-label">治疗状态控制</div>
+        <div class="control-status">
+          <span class="status-label">当前状态：</span>
+          <span
+            class="status-value"
+            :style="{ color: isTreating ? '#10B981' : '#FFC857' }"
+          >
+            {{ isTreating ? '🩺 治疗中' : '⏳ 准备中' }}
+          </span>
+        </div>
+        <div class="control-hint" v-if="!isTreating">
+          💡 点击「开始治疗」将自动关闭诊室直播
+        </div>
+        <div class="control-hint" v-else>
+          🔒 直播已自动关闭，保护患者隐私
+        </div>
+        <div class="control-buttons">
+          <button
+            v-if="!isTreating"
+            class="control-btn start-btn"
+            @click="handleStartTreatment"
+          >
+            <span class="btn-icon">▶️</span>
+            开始治疗
+          </button>
+          <button
+            v-else
+            class="control-btn finish-btn"
+            @click="handleFinishTreatment"
+          >
+            <span class="btn-icon">✅</span>
+            结束治疗
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -277,6 +326,91 @@ const showSpeak = ref(true);
 .panel-tips {
   font-size: 12px;
   color: #3D9970;
+}
+
+.treatment-control {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(46, 125, 96, 0.3);
+}
+
+.control-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2E7D60;
+  margin-bottom: 10px;
+}
+
+.control-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.status-label {
+  font-size: 13px;
+  color: #3D9970;
+}
+
+.status-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.control-hint {
+  font-size: 12px;
+  color: #52796F;
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+}
+
+.control-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.control-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.control-btn:hover {
+  transform: translateY(-2px);
+}
+
+.start-btn {
+  background: linear-gradient(135deg, #FF7B6B 0%, #FF9F8F 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(255, 123, 107, 0.3);
+}
+
+.start-btn:hover {
+  box-shadow: 0 6px 16px rgba(255, 123, 107, 0.4);
+}
+
+.finish-btn {
+  background: linear-gradient(135deg, #10B981 0%, #34D399 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.finish-btn:hover {
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+}
+
+.btn-icon {
+  font-size: 16px;
 }
 
 @keyframes anim-pop-in {
